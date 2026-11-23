@@ -13,27 +13,35 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Qt 6
-        uses: jurplel/install-qt-action@v4
+      - name: Setup Python and aqtinstall
+        uses: actions/setup-python@v5
         with:
-          version: '6.7.2'
-          host: 'windows'
-          target: 'desktop'
-          arch: 'win64_msvc2022_64'
+          python-version: '3.12'
+
+      - name: Install Qt 6
+        run: |
+          pip install --upgrade pip aqtinstall
+          aqt install-qt windows desktop 6.8.3 win64_msvc2022_64 -O C:\Qt
+          echo "C:\Qt\6.8.3\msvc2022_64\bin" >> $env:GITHUB_PATH
+          echo "Qt6_DIR=C:\Qt\6.8.3\msvc2022_64\lib\cmake\Qt6" >> $env:GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64" >> $env:GITHUB_ENV
 
       - name: Configure CMake
+        shell: pwsh
         run: |
           cmake -B build -A x64
 
       - name: Build Release
+        shell: pwsh
         run: |
           cmake --build build --config Release
 
       - name: Deploy Qt DLLs and Package
+        shell: pwsh
         run: |
-          mkdir RFPS_Release
-          copy build\Release\RFPS.exe RFPS_Release\
-          xcopy /E /I shaders RFPS_Release\shaders\
+          New-Item -ItemType Directory -Force -Path RFPS_Release | Out-Null
+          Copy-Item build\Release\RFPS.exe RFPS_Release\
+          Copy-Item -Recurse -Force shaders RFPS_Release\shaders
           windeployqt.exe RFPS_Release\RFPS.exe --no-translations --no-opengl-sw
 
       - name: Upload RFPS ZIP
